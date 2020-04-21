@@ -5,7 +5,12 @@ mqtt:
   password: test
 deviceName: test
 client_id: test
+device_manufacturer: Raspberry Pi Foundation
+device_model: RPI
+autodiscover_device_model: true
 timezone: Europe/Brussels
 power_integer_state: false #defaults to false
 update_interval: 60 #Defaults to 60
+disk_usage_path: /
+check_disk_usage: true
 check_wifi_strength: true 

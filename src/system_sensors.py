@@ -69,8 +69,8 @@ def get_last_boot():
 def updateSensors():
     payload_str=('{"temperature": '
     + get_temp()
-    + ', "disk_use": '
-    + get_disk_usage()
+    if "check_disk_usage" in settings and settings["check_disk_usage"]:
+        payload_str = payload_str + ', "disk_use": ' + get_disk_usage()
     + ', "memory_use": '
     + get_memory_usage()
     + ', "cpu_usage": '
@@ -92,23 +92,24 @@ def updateSensors():
         retain=False,
     )
 
+def get_device_model():
+    return check_output(["cat", "/proc/device-tree/model"]).decode("UTF-8")
 
 def get_temp():
     temp = check_output(["vcgencmd", "measure_temp"]).decode("UTF-8")
     return str(findall("\d+\.\d+", temp)[0])
 
-
 def get_disk_usage():
-    return str(psutil.disk_usage("/").percent)
-
+    disk_usage_path="/"
+    if "disk_usage_path" in settings and settings["disk_usage_path"]:
+        disk_usage_path=settings["disk_usage_path"]
+    return str(psutil.disk_usage(disk_usage_path).percent)
 
 def get_memory_usage():
     return str(psutil.virtual_memory().percent)
 
-
 def get_cpu_usage():
     return str(psutil.cpu_percent(interval=None))
-
 
 def get_swap_usage():
     return str(psutil.swap_memory().percent)
@@ -177,6 +178,9 @@ if __name__ == "__main__":
     DEFAULT_TIME_ZONE = timezone(settings["timezone"])
     if "update_interval" in settings:
         WAIT_TIME_SECONDS = settings["update_interval"]
+    DEVICE_MODEL = settings["device_model"]
+    if "autodiscover_device_model" in settings and settings["autodiscover_device_model"]:
+        DEVICE_MODEL = get_device_model()
     mqttClient = mqtt.Client(client_id=settings["client_id"])
     deviceName = settings["deviceName"]
     if "user" in settings["mqtt"]:
@@ -201,34 +205,39 @@ if __name__ == "__main__":
         + deviceName.lower()
         + '_sensor"],"name":"'
         + deviceName
-        + 'Sensors","model":"RPI '
-        + deviceName
-        + '","manufacturer":"RPI"}, "icon":"mdi:thermometer"}',
+        + 'Sensors","model":"'
+        + DEVICE_MODEL
+        + '","manufacturer":"'
+        + settings["device_manufacturer"]
+        + '"}, "icon":"mdi:thermometer"}',
         qos=1,
         retain=True,
     )
-    mqttClient.publish(
-        topic="homeassistant/sensor/"
-        + deviceName
-        + "/"
-        + deviceName
-        + "DiskUse/config",
-        payload='{"name":"'
-        + deviceName
-        + 'DiskUse","state_topic":"system-sensors/sensor/'
-        + deviceName
-        + '/state","unit_of_measurement":"%","value_template":"{{ value_json.disk_use}}","unique_id":"'
-        + deviceName.lower()
-        + '_sensor_disk_use","device":{"identifiers":["'
-        + deviceName.lower()
-        + '_sensor"],"name":"'
-        + deviceName
-        + 'Sensors","model":"RPI '
-        + deviceName
-        + '","manufacturer":"RPI"}, "icon":"mdi:microsd"}',
-        qos=1,
-        retain=True,
-    )
+    if "check_disk_usage" in settings and settings["check_disk_usage"]:
+        mqttClient.publish(
+            topic="homeassistant/sensor/"
+            + deviceName
+            + "/"
+            + deviceName
+            + "DiskUse/config",
+            payload='{"name":"'
+            + deviceName
+            + 'DiskUse","state_topic":"system-sensors/sensor/'
+            + deviceName
+            + '/state","unit_of_measurement":"%","value_template":"{{ value_json.disk_use}}","unique_id":"'
+            + deviceName.lower()
+            + '_sensor_disk_use","device":{"identifiers":["'
+            + deviceName.lower()
+            + '_sensor"],"name":"'
+            + deviceName
+            + 'Sensors","model":"'
+            + DEVICE_MODEL
+            + '","manufacturer":"'
+            + settings["device_manufacturer"]
+            + '"}, "icon":"mdi:microsd"}',
+            qos=1,
+            retain=True,
+        )
     mqttClient.publish(
         topic="homeassistant/sensor/"
         + deviceName
@@ -245,9 +254,11 @@ if __name__ == "__main__":
         + deviceName.lower()
         + '_sensor"],"name":"'
         + deviceName
-        + 'Sensors","model":"RPI '
-        + deviceName
-        + '","manufacturer":"RPI"}, "icon":"mdi:memory"}',
+        + 'Sensors","model":"'
+        + DEVICE_MODEL
+        + '","manufacturer":"'
+        + settings["device_manufacturer"]
+        + '"}, "icon":"mdi:memory"}',
         qos=1,
         retain=True,
     )
@@ -267,9 +278,11 @@ if __name__ == "__main__":
         + deviceName.lower()
         + '_sensor"],"name":"'
         + deviceName
-        + 'Sensors","model":"RPI '
-        + deviceName
-        + '","manufacturer":"RPI"}, "icon":"mdi:memory"}',
+        + 'Sensors","model":"'
+        + DEVICE_MODEL
+        + '","manufacturer":"'
+        + settings["device_manufacturer"]
+        + '"}, "icon":"mdi:memory"}',
         qos=1,
         retain=True,
     )
@@ -289,9 +302,11 @@ if __name__ == "__main__":
         + deviceName.lower()
         + '_sensor"],"name":"'
         + deviceName
-        + 'Sensors","model":"RPI '
-        + deviceName
-        + '","manufacturer":"RPI"}, "icon":"mdi:harddisk"}',
+        + 'Sensors","model":"'
+        + DEVICE_MODEL
+        + '","manufacturer":"'
+        + settings["device_manufacturer"]
+        + '"}, "icon":"mdi:harddisk"}',
         qos=1,
         retain=True,
     )
@@ -311,9 +326,11 @@ if __name__ == "__main__":
         + deviceName.lower()
         + '_sensor"],"name":"'
         + deviceName
-        + 'Sensors","model":"RPI '
-        + deviceName
-        + '","manufacturer":"RPI"}, "icon":"mdi:power-plug"}',
+        + 'Sensors","model":"'
+        + DEVICE_MODEL
+        + '","manufacturer":"'
+        + settings["device_manufacturer"]
+        + '"}, "icon":"mdi:power-plug"}',
         qos=1,
         retain=True,
     )
@@ -333,9 +350,11 @@ if __name__ == "__main__":
         + deviceName.lower()
         + '_sensor"],"name":"'
         + deviceName
-        + 'Sensors","model":"RPI '
-        + deviceName
-        + '","manufacturer":"RPI"}, "icon":"mdi:clock"}',
+        + 'Sensors","model":"'
+        + DEVICE_MODEL
+        + '","manufacturer":"'
+        + settings["device_manufacturer"]
+        + '"}, "icon":"mdi:clock"}',
         qos=1,
         retain=True,
     )
@@ -356,9 +375,11 @@ if __name__ == "__main__":
             + deviceName.lower()
             + '_sensor"],"name":"'
             + deviceName
-            + 'Sensors","model":"RPI '
-            + deviceName
-            + '","manufacturer":"RPI"}}',
+            + 'Sensors","model":"'
+            + DEVICE_MODEL
+            + '","manufacturer":"'
+            + settings["device_manufacturer"]
+            + '"}}',
             qos=1,
             retain=True,
         )
@@ -374,4 +395,3 @@ if __name__ == "__main__":
             sys.stdout.flush()
             job.stop()
             break
-
